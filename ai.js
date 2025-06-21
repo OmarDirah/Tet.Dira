@@ -236,7 +236,9 @@ function executeAIMoveStep() {
     // Handle hold if the improved AI suggests it
     if (bestMove.useHold && canHold) {
       aiMoveSequence.push('hold');
-      if (bestMove.wellFilling) {
+      if (bestMove.forcedHold) {
+        addToConsole(`🔄 AI forced to use HOLD as last resort`);
+      } else if (bestMove.wellFilling) {
         addToConsole(`🔧 AI using HOLD for well-filling strategy`);
       } else if (bestMove.linesCleared) {
         addToConsole(`🎯 AI using HOLD to clear ${bestMove.linesCleared} line(s)!`);

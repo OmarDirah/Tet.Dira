@@ -306,7 +306,7 @@ function findWellFillingMoves(board, pieceId) {
     let newBoard = placePiece(board, move.shape, move.x, move.y);
     let wellScore = 0;
     
-    // Check if this move fills a well
+    // Check if this move fills a well or creates good well opportunities
     for (let c = 0; c < COLS; c++) {
       let height = 0;
       for (let r = 0; r < ROWS; r++) {
@@ -316,16 +316,24 @@ function findWellFillingMoves(board, pieceId) {
         }
       }
       
-      let leftHeight = c > 0 ? 0 : 0;
-      let rightHeight = c < COLS-1 ? 0 : 0;
+      let leftHeight = 0;
+      let rightHeight = 0;
       
       for (let r = 0; r < ROWS; r++) {
         if (c > 0 && newBoard[r][c-1]) leftHeight = Math.max(leftHeight, ROWS - r);
         if (c < COLS-1 && newBoard[r][c+1]) rightHeight = Math.max(rightHeight, ROWS - r);
       }
       
+      // More sensitive well detection
       if (leftHeight > height + 1 || rightHeight > height + 1) {
-        wellScore += 1;
+        wellScore += 2; // Filling existing well
+      } else if (leftHeight > height || rightHeight > height) {
+        wellScore += 1; // Creating well opportunity
+      }
+      
+      // Bonus for I-piece well creation
+      if (pieceId === 0 && (leftHeight > height + 2 || rightHeight > height + 2)) {
+        wellScore += 3; // I-piece can clear 4 lines
       }
     }
     
@@ -411,7 +419,7 @@ function findBestMove(board, current, held, nextQueue) {
       }
     }
     
-    // Try hold piece if available - with better evaluation
+    // Try hold piece if available - with MUCH better evaluation
     if (holdId !== null) {
       console.log(`AI Debug: Evaluating hold piece for regular moves`);
       moves = getLegalMoves(board, holdId);
@@ -423,8 +431,8 @@ function findBestMove(board, current, held, nextQueue) {
         // Add bonus for any lines cleared
         score += clearedData.linesCleared * 500;
         
-        // Add bonus for using hold strategically
-        score += 100;
+        // MUCH bigger bonus for using hold strategically
+        score += 500; // Increased from 100 to 500
         
         if (score > bestScore) {
           bestScore = score;
@@ -441,8 +449,8 @@ function findBestMove(board, current, held, nextQueue) {
     }
   }
   
-  // FOURTH PRIORITY: If still no good move, look for well-filling opportunities
-  if (!bestMove || bestScore < -1000) {
+  // FOURTH PRIORITY: Look for well-filling opportunities (MORE AGGRESSIVE)
+  if (!bestMove || bestScore < -500) { // Changed from -1000 to -500
     console.log(`AI Debug: Looking for well-filling opportunities`);
     let currentWellMoves = findWellFillingMoves(board, currentId);
     if (currentWellMoves.length > 0) {
@@ -454,6 +462,7 @@ function findBestMove(board, current, held, nextQueue) {
         shape: currentWellMoves[0].shape,
         wellFilling: true
       };
+      console.log(`AI Debug: Using current piece for well-filling`);
     }
     
     // Check hold piece for well filling too
@@ -470,6 +479,23 @@ function findBestMove(board, current, held, nextQueue) {
         };
         console.log(`AI Debug: Using hold piece for well-filling`);
       }
+    }
+  }
+  
+  // FIFTH PRIORITY: Force hold usage if we have a hold piece and no good move
+  if (!bestMove && holdId !== null) {
+    console.log(`AI Debug: Forcing hold usage as last resort`);
+    let moves = getLegalMoves(board, holdId);
+    if (moves.length > 0) {
+      bestMove = {
+        useHold: true,
+        x: moves[0].x,
+        y: moves[0].y,
+        rot: moves[0].rot,
+        shape: moves[0].shape,
+        forcedHold: true
+      };
+      console.log(`AI Debug: Forced hold usage`);
     }
   }
   
