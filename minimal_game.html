@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Minimal Game Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test { margin: 10px 0; padding: 10px; border: 1px solid #ccc; }
+        .success { background-color: #d4edda; }
+        .error { background-color: #f8d7da; }
+    </style>
+</head>
+<body>
+    <h1>Minimal Game Test</h1>
+    <div id="results"></div>
+    
+    <!-- Same canvas elements as main game -->
+    <canvas id="gameCanvas" width="300" height="600" style="border: 1px solid black;"></canvas>
+    <canvas id="holdCanvas" width="80" height="80" style="border: 1px solid red;"></canvas>
+    <canvas id="nextCanvas" width="80" height="160" style="border: 1px solid blue;"></canvas>
+    
+    <script>
+        function log(message, type = 'success') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `test ${type}`;
+            div.textContent = message;
+            results.appendChild(div);
+            console.log(message);
+        }
+        
+        // Test 1: Check if canvas elements exist
+        log('Testing canvas elements...');
+        const gameCanvas = document.getElementById('gameCanvas');
+        const holdCanvas = document.getElementById('holdCanvas');
+        const nextCanvas = document.getElementById('nextCanvas');
+        
+        if (gameCanvas) log('✅ gameCanvas found');
+        else log('❌ gameCanvas not found', 'error');
+        
+        if (holdCanvas) log('✅ holdCanvas found');
+        else log('❌ holdCanvas not found', 'error');
+        
+        if (nextCanvas) log('✅ nextCanvas found');
+        else log('❌ nextCanvas not found', 'error');
+        
+        // Test 2: Load simple_ai.js
+        log('Loading simple_ai.js...');
+    </script>
+    
+    <script src="simple_ai.js"></script>
+    
+    <script>
+        log('simple_ai.js loaded');
+        if (typeof window.findBestMove === 'function') {
+            log('✅ findBestMove function available');
+        } else {
+            log('❌ findBestMove function not available', 'error');
+        }
+        
+        // Test 3: Load main.js
+        log('Loading main.js...');
+    </script>
+    
+    <script src="main.js"></script>
+    
+    <script>
+        log('main.js loaded');
+        
+        // Test 4: Check if game variables are defined
+        if (typeof COLS !== 'undefined') log(`✅ COLS defined: ${COLS}`);
+        else log('❌ COLS not defined', 'error');
+        
+        if (typeof ROWS !== 'undefined') log(`✅ ROWS defined: ${ROWS}`);
+        else log('❌ ROWS not defined', 'error');
+        
+        if (typeof current !== 'undefined') log('✅ current piece defined');
+        else log('❌ current piece not defined', 'error');
+        
+        // Test 5: Check if canvas contexts are available
+        if (typeof canvas !== 'undefined') log('✅ canvas variable defined');
+        else log('❌ canvas variable not defined', 'error');
+        
+        if (typeof ctx !== 'undefined') log('✅ ctx variable defined');
+        else log('❌ ctx variable not defined', 'error');
+        
+        // Test 6: Try to draw something
+        if (ctx) {
+            try {
+                ctx.fillStyle = 'red';
+                ctx.fillRect(10, 10, 50, 50);
+                log('✅ Canvas drawing test successful');
+            } catch (error) {
+                log(`❌ Canvas drawing error: ${error.message}`, 'error');
+            }
+        }
+        
+        log('Minimal game test completed!');
+    </script>
+</body>
+</html> 

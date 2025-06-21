@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Test</title>
+</head>
+<body>
+    <h1>AI Loading Test</h1>
+    <div id="status">Loading...</div>
+    <button onclick="testAI()">Test AI Functions</button>
+    <div id="output"></div>
+
+    <script src="helper_ai.js"></script>
+    <script src="ai.js"></script>
+    <script src="improved_ai.js"></script>
+    
+    <script>
+        function testAI() {
+            const output = document.getElementById('output');
+            output.innerHTML = '';
+            
+            // Test if functions are available
+            const tests = [
+                { name: 'toggleAI', func: window.toggleAI },
+                { name: 'findBestMove', func: window.findBestMove },
+                { name: 'executeAIMoveStep', func: window.executeAIMoveStep },
+                { name: 'find_best_move', func: window.find_best_move },
+                { name: 'evaluateBoard', func: window.evaluateBoard }
+            ];
+            
+            tests.forEach(test => {
+                const status = test.func ? '✅ Available' : '❌ Missing';
+                output.innerHTML += `<p>${test.name}: ${status}</p>`;
+                console.log(`${test.name}:`, test.func);
+            });
+            
+            // Test if we can call findBestMove
+            if (window.findBestMove) {
+                try {
+                    const testBoard = Array(20).fill().map(() => Array(10).fill(0));
+                    const testPiece = { shape: [[1,1],[1,1]] };
+                    const result = window.findBestMove(testBoard, testPiece, null, []);
+                    output.innerHTML += `<p>✅ findBestMove test: ${result ? 'Success' : 'No result'}</p>`;
+                    console.log('findBestMove result:', result);
+                } catch (error) {
+                    output.innerHTML += `<p>❌ findBestMove error: ${error.message}</p>`;
+                    console.error('findBestMove error:', error);
+                }
+            }
+        }
+        
+        // Auto-test on load
+        window.onload = function() {
+            document.getElementById('status').textContent = 'Ready - Click Test AI Functions';
+            console.log('Test page loaded');
+            console.log('Available window functions:', Object.keys(window).filter(key => 
+                key.includes('AI') || key.includes('Move') || key.includes('find')
+            ));
+        };
+    </script>
+</body>
+</html> 

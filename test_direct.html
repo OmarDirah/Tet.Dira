@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Direct AI Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-result { margin: 10px 0; padding: 10px; border: 1px solid #ccc; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+    </style>
+</head>
+<body>
+    <h1>Direct AI Function Test</h1>
+    <div id="results"></div>
+    
+    <script src="helper_ai.js"></script>
+    <script src="ai.js"></script>
+    <script src="improved_ai.js"></script>
+    
+    <script>
+        function log(message, type = 'info') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `test-result ${type}`;
+            div.textContent = message;
+            results.appendChild(div);
+            console.log(message);
+        }
+        
+        function testFunction(name, func) {
+            if (typeof func === 'function') {
+                log(`✅ ${name}: Available`, 'success');
+                return true;
+            } else {
+                log(`❌ ${name}: Not available (${typeof func})`, 'error');
+                return false;
+            }
+        }
+        
+        function runTests() {
+            log('Starting AI function tests...', 'info');
+            
+            // Test basic function availability
+            const functions = [
+                'toggleAI',
+                'findBestMove', 
+                'executeAIMoveStep',
+                'find_best_move',
+                'evaluateBoard'
+            ];
+            
+            let availableCount = 0;
+            functions.forEach(name => {
+                if (testFunction(name, window[name])) {
+                    availableCount++;
+                }
+            });
+            
+            log(`Functions available: ${availableCount}/${functions.length}`, 'info');
+            
+            // Test findBestMove with simple data
+            if (window.findBestMove) {
+                try {
+                    log('Testing findBestMove with simple data...', 'info');
+                    
+                    // Create a simple empty board
+                    const testBoard = Array(20).fill().map(() => Array(10).fill(0));
+                    
+                    // Create a simple piece (O piece)
+                    const testPiece = { shape: [[1,1],[1,1]] };
+                    
+                    // Create held piece (I piece)
+                    const heldPiece = { shape: [[1,1,1,1]] };
+                    
+                    // Create next pieces
+                    const nextPieces = [
+                        { shape: [[0,1,0],[1,1,1]] }, // T piece
+                        { shape: [[0,1,1],[1,1,0]] }  // S piece
+                    ];
+                    
+                    log('Calling findBestMove...', 'info');
+                    const result = window.findBestMove(testBoard, testPiece, heldPiece, nextPieces);
+                    
+                    if (result) {
+                        log(`✅ findBestMove returned: ${JSON.stringify(result)}`, 'success');
+                    } else {
+                        log('❌ findBestMove returned null', 'error');
+                    }
+                    
+                } catch (error) {
+                    log(`❌ findBestMove error: ${error.message}`, 'error');
+                    console.error('Full error:', error);
+                }
+            }
+            
+            // Test if PIECES array is available
+            if (typeof PIECES !== 'undefined') {
+                log(`✅ PIECES array available with ${PIECES.length} pieces`, 'success');
+            } else {
+                log('❌ PIECES array not available', 'error');
+            }
+            
+            // Test if COLS and ROWS are available
+            if (typeof COLS !== 'undefined' && typeof ROWS !== 'undefined') {
+                log(`✅ COLS=${COLS}, ROWS=${ROWS}`, 'success');
+            } else {
+                log('❌ COLS or ROWS not available', 'error');
+            }
+            
+            log('Tests completed!', 'info');
+        }
+        
+        // Run tests when page loads
+        window.onload = runTests;
+    </script>
+</body>
+</html> 

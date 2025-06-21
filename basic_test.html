@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Basic Test</title>
+</head>
+<body>
+    <h1>Basic Script Test</h1>
+    <div id="output"></div>
+    
+    <script>
+        // Add error handler to catch any JavaScript errors
+        window.onerror = function(message, source, lineno, colno, error) {
+            document.getElementById('output').innerHTML += '<p style="color: red;">ERROR: ' + message + '</p>';
+            console.error('JavaScript Error:', message, source, lineno, colno, error);
+            return true;
+        };
+        
+        document.getElementById('output').innerHTML += '<p>Loading scripts...</p>';
+    </script>
+    
+    <script src="simple_ai.js"></script>
+    <script>
+        document.getElementById('output').innerHTML += '<p>simple_ai.js loaded</p>';
+    </script>
+    
+    <script src="main.js"></script>
+    <script>
+        document.getElementById('output').innerHTML += '<p>main.js loaded</p>';
+        document.getElementById('output').innerHTML += '<p>Test completed!</p>';
+    </script>
+</body>
+</html> 

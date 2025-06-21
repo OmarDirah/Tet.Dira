@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Simple Tetris Test</title>
+  <style>
+    body {
+      background: #222;
+      color: #fff;
+      font-family: sans-serif;
+      text-align: center;
+      padding: 20px;
+    }
+    #gameCanvas {
+      border: 2px solid #fff;
+      background: #000;
+      display: block;
+      margin: 20px auto;
+    }
+    .status {
+      margin: 10px;
+      padding: 10px;
+      border-radius: 5px;
+    }
+    .success { background: #4CAF50; }
+    .error { background: #f44336; }
+    .info { background: #2196F3; }
+    button {
+      background: #4CAF50;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      margin: 5px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    button:hover { background: #45a049; }
+  </style>
+</head>
+<body>
+  <h1>Simple Tetris Test</h1>
+  <div id="status"></div>
+  <canvas id="gameCanvas" width="300" height="600"></canvas>
+  <br>
+  <button onclick="testAI()">Test AI</button>
+  <button onclick="testGame()">Test Game</button>
+  <button onclick="restartGame()">Restart Game</button>
+  
+  <script src="simple_ai.js"></script>
+  <script>
+    // Simple test game
+    const COLS = 10, ROWS = 20, BLOCK_SIZE = 30;
+    let canvas, ctx;
+    let board = Array(ROWS).fill().map(() => Array(COLS).fill(0));
+    let current, next;
+    let held = null;
+    let canHold = true;
+    
+    function updateStatus(message, type = 'info') {
+      const status = document.getElementById('status');
+      status.innerHTML = `<div class="status ${type}">${message}</div>`;
+      console.log(message);
+    }
+    
+    function randomPiece() {
+      const SHAPES = [
+        [[1,1,1,1]], [[1,1],[1,1]], [[0,1,1],[1,1,0]], 
+        [[1,1,0],[0,1,1]], [[1,0,0],[1,1,1]], 
+        [[0,0,1],[1,1,1]], [[0,1,0],[1,1,1]]
+      ];
+      const COLORS = ['#00ffff','#ffff00','#00ff00','#ff0000','#0000ff','#ff8800','#ff00ff'];
+      const idx = Math.floor(Math.random() * SHAPES.length);
+      return { x: 3, y: 0, shape: SHAPES[idx], color: COLORS[idx] };
+    }
+    
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // Draw board
+      board.forEach((row, y) => {
+        row.forEach((value, x) => {
+          if (value) {
+            ctx.fillStyle = value;
+            ctx.fillRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE - 1, BLOCK_SIZE - 1);
+          }
+        });
+      });
+      
+      // Draw current piece
+      if (current) {
+        ctx.fillStyle = current.color;
+        current.shape.forEach((row, dy) => {
+          row.forEach((value, dx) => {
+            if (value) {
+              ctx.fillRect(
+                (current.x + dx) * BLOCK_SIZE,
+                (current.y + dy) * BLOCK_SIZE,
+                BLOCK_SIZE - 1,
+                BLOCK_SIZE - 1
+              );
+            }
+          });
+        });
+      }
+    }
+    
+    function testAI() {
+      try {
+        updateStatus('Testing AI functions...', 'info');
+        
+        if (typeof window.findBestMove !== 'function') {
+          updateStatus('❌ findBestMove function not found!', 'error');
+          return;
+        }
+        
+        if (typeof window.evaluateBoard !== 'function') {
+          updateStatus('❌ evaluateBoard function not found!', 'error');
+          return;
+        }
+        
+        // Test AI with current board
+        const boardArr = board.map(row => row.map(cell => (cell ? 1 : 0)));
+        const result = window.findBestMove(boardArr, current, held, [next]);
+        
+        if (result) {
+          updateStatus(`✅ AI working! Move: useHold=${result.useHold}, x=${result.x}, y=${result.y}, rot=${result.rot}`, 'success');
+        } else {
+          updateStatus('⚠️ AI returned no move', 'info');
+        }
+      } catch (error) {
+        updateStatus(`❌ AI Error: ${error.message}`, 'error');
+      }
+    }
+    
+    function testGame() {
+      try {
+        updateStatus('Testing game functions...', 'info');
+        
+        if (!canvas || !ctx) {
+          updateStatus('❌ Canvas not initialized!', 'error');
+          return;
+        }
+        
+        if (!current) {
+          updateStatus('❌ Current piece not initialized!', 'error');
+          return;
+        }
+        
+        draw();
+        updateStatus('✅ Game drawing working!', 'success');
+      } catch (error) {
+        updateStatus(`❌ Game Error: ${error.message}`, 'error');
+      }
+    }
+    
+    function restartGame() {
+      try {
+        board = Array(ROWS).fill().map(() => Array(COLS).fill(0));
+        current = randomPiece();
+        next = randomPiece();
+        held = null;
+        canHold = true;
+        draw();
+        updateStatus('✅ Game restarted!', 'success');
+      } catch (error) {
+        updateStatus(`❌ Restart Error: ${error.message}`, 'error');
+      }
+    }
+    
+    // Initialize when page loads
+    window.addEventListener('load', () => {
+      try {
+        canvas = document.getElementById('gameCanvas');
+        ctx = canvas.getContext('2d');
+        
+        if (!canvas || !ctx) {
+          updateStatus('❌ Failed to get canvas context!', 'error');
+          return;
+        }
+        
+        current = randomPiece();
+        next = randomPiece();
+        
+        draw();
+        updateStatus('✅ Game initialized successfully!', 'success');
+        updateStatus('🔧 AI functions available: ' + (typeof window.findBestMove === 'function' ? 'Yes' : 'No'), 'info');
+      } catch (error) {
+        updateStatus(`❌ Initialization Error: ${error.message}`, 'error');
+      }
+    });
+  </script>
+</body>
+</html> 

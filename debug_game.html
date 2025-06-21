@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Game Debug</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .debug { margin: 10px 0; padding: 10px; border: 1px solid #ccc; }
+        .success { background-color: #d4edda; }
+        .error { background-color: #f8d7da; }
+        .info { background-color: #d1ecf1; }
+    </style>
+</head>
+<body>
+    <h1>Game Debug Test</h1>
+    <div id="results"></div>
+    
+    <canvas id="testCanvas" width="300" height="600" style="border: 1px solid black;"></canvas>
+    
+    <script>
+        function log(message, type = 'info') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `debug ${type}`;
+            div.textContent = message;
+            results.appendChild(div);
+            console.log(message);
+        }
+        
+        function testGameElements() {
+            log('Testing game elements...');
+            
+            // Test 1: Check if canvas exists
+            const canvas = document.getElementById('testCanvas');
+            if (canvas) {
+                log('✅ Canvas element found', 'success');
+                
+                // Test 2: Check if we can get context
+                try {
+                    const ctx = canvas.getContext('2d');
+                    if (ctx) {
+                        log('✅ Canvas context obtained', 'success');
+                        
+                        // Test 3: Try to draw something
+                        ctx.fillStyle = 'red';
+                        ctx.fillRect(10, 10, 50, 50);
+                        log('✅ Canvas drawing test successful', 'success');
+                    } else {
+                        log('❌ Could not get canvas context', 'error');
+                    }
+                } catch (error) {
+                    log(`❌ Canvas context error: ${error.message}`, 'error');
+                }
+            } else {
+                log('❌ Canvas element not found', 'error');
+            }
+            
+            // Test 4: Check if main.js elements exist
+            const gameCanvas = document.getElementById('gameCanvas');
+            if (gameCanvas) {
+                log('✅ Game canvas found', 'success');
+            } else {
+                log('❌ Game canvas not found', 'error');
+            }
+            
+            const holdCanvas = document.getElementById('holdCanvas');
+            if (holdCanvas) {
+                log('✅ Hold canvas found', 'success');
+            } else {
+                log('❌ Hold canvas not found', 'error');
+            }
+            
+            const nextCanvas = document.getElementById('nextCanvas');
+            if (nextCanvas) {
+                log('✅ Next canvas found', 'success');
+            } else {
+                log('❌ Next canvas not found', 'error');
+            }
+            
+            // Test 5: Check if AI functions are available
+            if (typeof window.findBestMove === 'function') {
+                log('✅ findBestMove function available', 'success');
+            } else {
+                log('❌ findBestMove function not available', 'error');
+            }
+            
+            // Test 6: Check if game variables are defined
+            if (typeof COLS !== 'undefined') {
+                log(`✅ COLS defined: ${COLS}`, 'success');
+            } else {
+                log('❌ COLS not defined', 'error');
+            }
+            
+            if (typeof ROWS !== 'undefined') {
+                log(`✅ ROWS defined: ${ROWS}`, 'success');
+            } else {
+                log('❌ ROWS not defined', 'error');
+            }
+            
+            // Test 7: Check if game functions are available
+            const gameFunctions = ['randomPiece', 'isValidMove', 'placePiece', 'draw'];
+            gameFunctions.forEach(funcName => {
+                if (typeof window[funcName] === 'function') {
+                    log(`✅ ${funcName} function available`, 'success');
+                } else {
+                    log(`❌ ${funcName} function not available`, 'error');
+                }
+            });
+            
+            log('Game debug test completed!');
+        }
+        
+        // Run test when page loads
+        window.onload = testGameElements;
+    </script>
+</body>
+</html> 

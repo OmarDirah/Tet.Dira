@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Minimal AI Test</title>
+</head>
+<body>
+    <h1>Minimal AI Test</h1>
+    <div id="output"></div>
+    
+    <script>
+        function log(message) {
+            document.getElementById('output').innerHTML += '<p>' + message + '</p>';
+            console.log(message);
+        }
+        
+        log('Page loading...');
+        
+        // Test 1: Load helper_ai.js
+        log('Loading helper_ai.js...');
+    </script>
+    
+    <script src="helper_ai.js"></script>
+    
+    <script>
+        log('helper_ai.js loaded');
+        log('find_best_move available: ' + (typeof window.find_best_move));
+        
+        // Test 2: Load ai.js
+        log('Loading ai.js...');
+    </script>
+    
+    <script src="ai.js"></script>
+    
+    <script>
+        log('ai.js loaded');
+        log('toggleAI available: ' + (typeof window.toggleAI));
+        log('executeAIMoveStep available: ' + (typeof window.executeAIMoveStep));
+        
+        // Test 3: Load improved_ai.js
+        log('Loading improved_ai.js...');
+    </script>
+    
+    <script src="improved_ai.js"></script>
+    
+    <script>
+        log('improved_ai.js loaded');
+        log('findBestMove available: ' + (typeof window.findBestMove));
+        log('evaluateBoard available: ' + (typeof window.evaluateBoard));
+        
+        // Test 4: Test findBestMove
+        if (window.findBestMove) {
+            try {
+                log('Testing findBestMove...');
+                const testBoard = Array(20).fill().map(() => Array(10).fill(0));
+                const testPiece = { shape: [[1,1],[1,1]] };
+                const result = window.findBestMove(testBoard, testPiece, null, []);
+                log('findBestMove result: ' + (result ? 'SUCCESS' : 'null'));
+            } catch (error) {
+                log('findBestMove ERROR: ' + error.message);
+            }
+        }
+        
+        log('Test completed!');
+    </script>
+</body>
+</html> 

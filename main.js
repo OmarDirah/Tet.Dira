@@ -1,18 +1,14 @@
 const COLS = 10, ROWS = 20, BLOCK_SIZE = 30, DROP_INTERVAL = 1000;
 
 let board = Array(ROWS).fill().map(() => Array(COLS).fill(0));
-let current = randomPiece(), next = randomPiece(), nextQueue = [randomPiece(), randomPiece()];
+let current, next, nextQueue;
 let held = null, canHold = true, lastDrop = Date.now(), softDropping = false, isPaused = false, showPauseMenu = false;
 let score = 0, level = 1, linesCleared = 0;
 
-let aiPlaying = false, aiMoveInterval = null, aiMoveSequence = [], aiMoveStep = 0, aiMoveDelay = 50;
+let aiPlaying = false, aiMoveInterval = null, aiMoveSequence = [], aiMoveStep = 0, aiMoveDelay = 50, aiExecuting = false;
 
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-const holdCanvas = document.getElementById('holdCanvas');
-const holdCtx = holdCanvas.getContext('2d');
-const nextCanvas = document.getElementById('nextCanvas');
-const nextCtx = nextCanvas.getContext('2d');
+// Canvas variables - will be initialized after DOM loads
+let canvas, ctx, holdCanvas, holdCtx, nextCanvas, nextCtx;
 
 let consoleOutput = [];
 const MAX_CONSOLE_LINES = 50;
@@ -32,9 +28,13 @@ function updateConsoleDisplay() {
   }
 }
 function updateScoreDisplay() {
-  document.getElementById('scoreValue').textContent = score;
-  document.getElementById('levelValue').textContent = level;
-  document.getElementById('linesValue').textContent = linesCleared;
+  const scoreElement = document.getElementById('scoreValue');
+  const levelElement = document.getElementById('levelValue');
+  const linesElement = document.getElementById('linesValue');
+  
+  if (scoreElement) scoreElement.textContent = score;
+  if (levelElement) levelElement.textContent = level;
+  if (linesElement) linesElement.textContent = linesCleared;
 }
 function randomPiece() {
   const SHAPES = [
@@ -142,15 +142,35 @@ function spawnNewPiece() {
   }
 }
 function drawGrid() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = '#000'; // background color
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.strokeStyle = '#333';
-  for (let r = 0; r <= ROWS; r++) {
-    ctx.beginPath(); ctx.moveTo(0, r * BLOCK_SIZE); ctx.lineTo(COLS * BLOCK_SIZE, r * BLOCK_SIZE); ctx.stroke();
-  }
-  for (let c = 0; c <= COLS; c++) {
-    ctx.beginPath(); ctx.moveTo(c * BLOCK_SIZE, 0); ctx.lineTo(c * BLOCK_SIZE, ROWS * BLOCK_SIZE); ctx.stroke();
+  try {
+    if (!ctx) {
+      console.error('❌ No canvas context in drawGrid');
+      return;
+    }
+    
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#000'; // background color
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 1;
+    
+    // Draw horizontal lines
+    for (let r = 0; r <= ROWS; r++) {
+      ctx.beginPath(); 
+      ctx.moveTo(0, r * BLOCK_SIZE); 
+      ctx.lineTo(COLS * BLOCK_SIZE, r * BLOCK_SIZE); 
+      ctx.stroke();
+    }
+    
+    // Draw vertical lines
+    for (let c = 0; c <= COLS; c++) {
+      ctx.beginPath(); 
+      ctx.moveTo(c * BLOCK_SIZE, 0); 
+      ctx.lineTo(c * BLOCK_SIZE, ROWS * BLOCK_SIZE); 
+      ctx.stroke();
+    }
+  } catch (error) {
+    console.error('❌ Error in drawGrid:', error);
   }
 }
 function drawPiece(piece) {
@@ -241,12 +261,21 @@ function drawPauseMenu() {
   ctx.restore();
 }
 function draw() {
-  drawGrid();
-  drawBoard();
-  if (current) drawPiece(current);
-  drawHoldArea();
-  drawNextArea();
-  if (isPaused && showPauseMenu) drawPauseMenu();
+  try {
+    if (!canvas || !ctx) {
+      console.error('❌ Canvas or context not available for drawing');
+      return;
+    }
+    
+    drawGrid();
+    drawBoard();
+    if (current) drawPiece(current);
+    drawHoldArea();
+    drawNextArea();
+    if (isPaused && showPauseMenu) drawPauseMenu();
+  } catch (error) {
+    console.error('❌ Error in draw function:', error);
+  }
 }
 function update() {
   if (isPaused) return;
@@ -263,10 +292,18 @@ function update() {
   }
 }
 function gameLoop() {
-  update();
-  draw();
-  updateScoreDisplay();
-  requestAnimationFrame(gameLoop);
+  try {
+    if (canvas && ctx) {
+      update();
+      draw();
+      updateScoreDisplay();
+    }
+    requestAnimationFrame(gameLoop);
+  } catch (error) {
+    console.error('Game loop error:', error);
+    // Continue the loop even if there's an error
+    requestAnimationFrame(gameLoop);
+  }
 }
 function resetGame() {
   board = Array(ROWS).fill().map(() => Array(COLS).fill(0));
@@ -344,10 +381,269 @@ document.addEventListener('keydown', e => {
   draw();
 });
 document.addEventListener('keyup', e => { if (e.key === 'ArrowDown') softDropping = false; });
-document.getElementById('aiSolveButton').addEventListener('click', toggleAI);
-addToConsole('TET.DIRA AI Console initialized');
-addToConsole('Press AI Solve to start the AI');
-addToConsole('Press R to restart game manually');
-addToConsole('Game starting...');
-addToConsole(`Initial piece: ${current.color} at (${current.x}, ${current.y})`);
-gameLoop();
+
+// AI integration
+let aiInterval = null;
+let aiTargetX = 0;
+let aiTargetRot = 0;
+let aiUseHold = false;
+
+function toggleAI() {
+  aiPlaying = !aiPlaying;
+  if (aiPlaying) {
+    document.getElementById('aiSolveButton').textContent = 'Stop AI';
+    document.getElementById('aiSolveButton').style.background = 'linear-gradient(135deg, #f44336, #d32f2f)';
+    aiInterval = setInterval(executeAIMove, 1000); // 1 second between moves
+    addToConsole('🤖 AI Started - Clean and smooth');
+  } else {
+    document.getElementById('aiSolveButton').textContent = 'AI Solve';
+    document.getElementById('aiSolveButton').style.background = 'linear-gradient(135deg, #4CAF50, #45a049)';
+    if (aiInterval) {
+      clearInterval(aiInterval);
+      aiInterval = null;
+    }
+    aiExecuting = false;
+    addToConsole('🤖 AI Stopped');
+  }
+}
+
+function executeAIMove() {
+  if (!current || !aiPlaying || aiExecuting) return;
+  
+  try {
+    aiExecuting = true;
+    
+    // Convert board to binary format
+    const boardArr = board.map(row => row.map(cell => (cell ? 1 : 0)));
+    
+    // Get next pieces
+    const nextPieces = [next, ...nextQueue];
+    
+    // Call AI
+    const bestMove = window.findBestMove(boardArr, current, held, nextPieces);
+    
+    if (bestMove) {
+      addToConsole(`🤖 AI: ${bestMove.useHold ? 'HOLD' : 'CURRENT'} → x:${bestMove.x}, rot:${bestMove.rot}`);
+      
+      // Store target for smooth movement
+      aiTargetX = bestMove.x;
+      aiTargetRot = bestMove.rot;
+      aiUseHold = bestMove.useHold;
+      
+      // Execute hold if needed
+      if (bestMove.useHold && canHold) {
+        holdPiece();
+        addToConsole('🔧 Hold executed');
+      }
+      
+      // Start smooth movement
+      executeSmoothMovement();
+      
+    } else {
+      addToConsole('❌ No valid move - dropping piece');
+      // Fallback: just drop the piece
+      while (isValidMove(current, 0, 1)) current.y++;
+      placePiece(current);
+      spawnNewPiece();
+      draw();
+      aiExecuting = false;
+    }
+  } catch (error) {
+    console.error('AI Error:', error);
+    addToConsole(`❌ AI Error: ${error.message}`);
+    aiExecuting = false;
+  }
+}
+
+function executeSmoothMovement() {
+  if (!aiExecuting) return;
+  
+  let moved = false;
+  
+  // Rotate piece if needed
+  if (aiTargetRot > 0) {
+    const rotated = rotate(current.shape);
+    if (isValidMove(current, 0, 0, rotated)) {
+      current.shape = rotated;
+      aiTargetRot--;
+      moved = true;
+      addToConsole('🔄 Rotated piece');
+    }
+  }
+  
+  // Move horizontally if needed
+  if (!moved && aiTargetX !== current.x) {
+    if (aiTargetX > current.x && isValidMove(current, 1, 0)) {
+      current.x++;
+      moved = true;
+    } else if (aiTargetX < current.x && isValidMove(current, -1, 0)) {
+      current.x--;
+      moved = true;
+    }
+  }
+  
+  // If no more movement needed, drop the piece
+  if (!moved && aiTargetRot === 0 && aiTargetX === current.x) {
+    // Hard drop
+    while (isValidMove(current, 0, 1)) current.y++;
+    placePiece(current);
+    spawnNewPiece();
+    
+    if (!isValidMove(current, 0, 0)) {
+      addToConsole('GAME OVER - restarting game');
+      resetGame();
+    }
+    
+    draw();
+    aiExecuting = false;
+    return;
+  }
+  
+  // Continue movement
+  draw();
+  setTimeout(executeSmoothMovement, 100); // 100ms between steps
+}
+
+// AI button event listener - add when DOM is ready
+function setupAIButton() {
+  const aiButton = document.getElementById('aiSolveButton');
+  if (aiButton) {
+    aiButton.addEventListener('click', toggleAI);
+    console.log('✅ AI button event listener added');
+  } else {
+    console.error('❌ AI button not found');
+  }
+}
+
+// Debug: Confirm main.js is loaded and functions are available
+console.log('🎯 Main.js loaded successfully!');
+console.log('🔧 findBestMove available:', typeof window.findBestMove);
+console.log('🔧 evaluateBoard available:', typeof window.evaluateBoard);
+
+// Diagnostic function
+function runDiagnostics() {
+  console.log('🔍 Running diagnostics...');
+  console.log('Canvas elements:');
+  console.log('- gameCanvas:', !!document.getElementById('gameCanvas'));
+  console.log('- holdCanvas:', !!document.getElementById('holdCanvas'));
+  console.log('- nextCanvas:', !!document.getElementById('nextCanvas'));
+  console.log('- aiSolveButton:', !!document.getElementById('aiSolveButton'));
+  console.log('- consoleOutput:', !!document.getElementById('consoleOutput'));
+  
+  console.log('Game state:');
+  console.log('- canvas:', !!canvas);
+  console.log('- ctx:', !!ctx);
+  console.log('- current:', !!current);
+  console.log('- board:', board ? board.length : 'null');
+  
+  console.log('AI state:');
+  console.log('- findBestMove:', typeof window.findBestMove);
+  console.log('- evaluateBoard:', typeof window.evaluateBoard);
+}
+
+// Initialize game when DOM is ready
+function startGame() {
+  console.log('🚀 Starting game initialization...');
+  runDiagnostics();
+  
+  if (initializeCanvas()) {
+    console.log('✅ Canvas initialized, testing...');
+    
+    // Test canvas functionality
+    if (!testCanvas()) {
+      console.error('❌ Canvas test failed - game cannot start');
+      addToConsole('❌ ERROR: Canvas test failed - game cannot start');
+      return;
+    }
+    
+    // Initialize game pieces
+    initializeGamePieces();
+    
+    // Setup AI button
+    setupAIButton();
+    
+    addToConsole('TET.DIRA AI Console initialized');
+    addToConsole('Press AI Solve to start the AI');
+    addToConsole('Press R to restart game manually');
+    addToConsole('Game starting...');
+    addToConsole(`Initial piece: ${current.color} at (${current.x}, ${current.y})`);
+    
+    // Start the game loop
+    gameLoop();
+    console.log('✅ Game started successfully!');
+  } else {
+    console.error('❌ Failed to initialize canvas - game cannot start');
+    addToConsole('❌ ERROR: Canvas initialization failed - game cannot start');
+  }
+}
+
+// Initialize game pieces after all functions are defined
+function initializeGamePieces() {
+  current = randomPiece();
+  next = randomPiece();
+  nextQueue = [randomPiece(), randomPiece()];
+  console.log('✅ Game pieces initialized');
+}
+
+// Start game when DOM is loaded
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', startGame);
+} else {
+  startGame();
+}
+
+// Initialize canvas elements after DOM loads
+function initializeCanvas() {
+  try {
+    canvas = document.getElementById('gameCanvas');
+    if (!canvas) {
+      console.error('Game canvas not found!');
+      return false;
+    }
+    ctx = canvas.getContext('2d');
+    
+    holdCanvas = document.getElementById('holdCanvas');
+    if (!holdCanvas) {
+      console.error('Hold canvas not found!');
+      return false;
+    }
+    holdCtx = holdCanvas.getContext('2d');
+    
+    nextCanvas = document.getElementById('nextCanvas');
+    if (!nextCanvas) {
+      console.error('Next canvas not found!');
+      return false;
+    }
+    nextCtx = nextCanvas.getContext('2d');
+    
+    console.log('✅ Canvas elements initialized successfully');
+    return true;
+  } catch (error) {
+    console.error('❌ Error initializing canvas:', error);
+    return false;
+  }
+}
+
+// Test canvas functionality
+function testCanvas() {
+  try {
+    if (!canvas || !ctx) {
+      console.error('❌ Canvas not available for testing');
+      return false;
+    }
+    
+    // Draw a test rectangle
+    ctx.fillStyle = '#ff0000';
+    ctx.fillRect(0, 0, 100, 100);
+    console.log('✅ Canvas test: Red rectangle drawn');
+    
+    // Clear it
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    console.log('✅ Canvas test: Canvas cleared');
+    
+    return true;
+  } catch (error) {
+    console.error('❌ Canvas test failed:', error);
+    return false;
+  }
+}

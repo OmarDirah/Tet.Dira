@@ -1,5 +1,8 @@
 // Improved Tetris AI with advanced heuristics and lookahead
 
+// Constants needed for the AI
+const COLS = 10, ROWS = 20;
+
 const PIECES = [
   [[1,1,1,1]],          // I
   [[1,1],[1,1]],        // O
@@ -350,122 +353,98 @@ function findWellFillingMoves(board, pieceId) {
 
 // Main AI function that finds the best move - IMPROVED hold usage
 function findBestMove(board, current, held, nextQueue) {
-  let currentId = getPieceId(current);
-  let holdId = held ? getPieceId(held) : null;
-  let nextIds = nextQueue.map(piece => getPieceId(piece));
-  
-  // Debug logging
-  console.log(`AI Debug: currentId=${currentId}, holdId=${holdId}, nextIds=${nextIds.join(',')}`);
-  
-  // SIMPLE TEST: Force hold usage every few moves to test if it works
-  let moveCount = window.aiMoveCount || 0;
-  window.aiMoveCount = moveCount + 1;
-  
-  // FORCE HOLD ON FIRST MOVE IF AVAILABLE
-  if (holdId !== null && moveCount === 0) {
-    console.log(`AI Debug: FORCING HOLD ON FIRST MOVE`);
-    let moves = getLegalMoves(board, holdId);
-    if (moves.length > 0) {
-      return {
-        useHold: true,
-        x: moves[0].x,
-        y: moves[0].y,
-        rot: moves[0].rot,
-        shape: moves[0].shape,
-        forcedHold: true,
-        firstMoveTest: true
-      };
-    }
-  }
-  
-  // Force hold every 3 moves if we have a hold piece
-  if (holdId !== null && moveCount % 3 === 0) {
-    console.log(`AI Debug: FORCING HOLD for testing (move ${moveCount})`);
-    let moves = getLegalMoves(board, holdId);
-    if (moves.length > 0) {
-      return {
-        useHold: true,
-        x: moves[0].x,
-        y: moves[0].y,
-        rot: moves[0].rot,
-        shape: moves[0].shape,
-        forcedHold: true,
-        testHold: true
-      };
-    }
-  }
-  
-  let bestMove = null;
-  let bestScore = -Infinity;
-  
-  // FIRST PRIORITY: Look for immediate line clearing opportunities
-  let currentScoringMoves = findScoringMoves(board, currentId);
-  if (currentScoringMoves.length > 0) {
-    bestMove = {
-      useHold: false,
-      x: currentScoringMoves[0].x,
-      y: currentScoringMoves[0].y,
-      rot: currentScoringMoves[0].rot,
-      shape: currentScoringMoves[0].shape,
-      linesCleared: currentScoringMoves[0].linesCleared
-    };
-    bestScore = currentScoringMoves[0].score;
-    console.log(`AI Debug: Found current piece scoring move: ${currentScoringMoves[0].linesCleared} lines`);
-  }
-  
-  // SECOND PRIORITY: Check hold piece for scoring opportunities
-  if (holdId !== null) {
-    let holdScoringMoves = findScoringMoves(board, holdId);
-    console.log(`AI Debug: Hold piece scoring moves: ${holdScoringMoves.length}`);
-    if (holdScoringMoves.length > 0 && holdScoringMoves[0].linesCleared > (bestMove ? bestMove.linesCleared : 0)) {
-      bestMove = {
-        useHold: true,
-        x: holdScoringMoves[0].x,
-        y: holdScoringMoves[0].y,
-        rot: holdScoringMoves[0].rot,
-        shape: holdScoringMoves[0].shape,
-        linesCleared: holdScoringMoves[0].linesCleared
-      };
-      bestScore = holdScoringMoves[0].score;
-      console.log(`AI Debug: Using hold piece for scoring: ${holdScoringMoves[0].linesCleared} lines`);
-    }
-  }
-  
-  // THIRD PRIORITY: If no immediate scoring, use regular evaluation with improved hold logic
-  if (!bestMove) {
-    console.log(`AI Debug: No immediate scoring, using regular evaluation`);
+  try {
+    let currentId = getPieceId(current);
+    let holdId = held ? getPieceId(held) : null;
+    let nextIds = nextQueue.map(piece => getPieceId(piece));
     
-    // Try current piece without using hold
-    let moves = getLegalMoves(board, currentId);
-    let currentBestScore = -Infinity;
-    let currentBestMove = null;
+    // Debug logging
+    console.log(`AI Debug: currentId=${currentId}, holdId=${holdId}, nextIds=${nextIds.join(',')}`);
+    console.log(`AI Debug: current piece shape:`, current?.shape);
+    console.log(`AI Debug: held piece shape:`, held?.shape);
     
-    for (let move of moves) {
-      let newBoard = placePiece(board, move.shape, move.x, move.y);
-      let clearedData = clearLines(newBoard);
-      let score = evaluateWithLookahead(clearedData.board, currentId, holdId, nextIds, 2);
-      
-      // Add bonus for any lines cleared
-      score += clearedData.linesCleared * 500;
-      
-      if (score > currentBestScore) {
-        currentBestScore = score;
-        currentBestMove = {
-          useHold: false,
-          x: move.x,
-          y: move.y,
-          rot: move.rot,
-          shape: move.shape
+    // SIMPLE TEST: Force hold usage every few moves to test if it works
+    let moveCount = window.aiMoveCount || 0;
+    window.aiMoveCount = moveCount + 1;
+    
+    // FORCE HOLD ON FIRST MOVE IF AVAILABLE
+    if (holdId !== null && moveCount === 0) {
+      console.log(`AI Debug: FORCING HOLD ON FIRST MOVE`);
+      let moves = getLegalMoves(board, holdId);
+      if (moves.length > 0) {
+        return {
+          useHold: true,
+          x: moves[0].x,
+          y: moves[0].y,
+          rot: moves[0].rot,
+          shape: moves[0].shape,
+          forcedHold: true,
+          firstMoveTest: true
         };
       }
     }
     
-    // Try hold piece if available - with MUCH better evaluation
+    // Force hold every 3 moves if we have a hold piece
+    if (holdId !== null && moveCount % 3 === 0) {
+      console.log(`AI Debug: FORCING HOLD for testing (move ${moveCount})`);
+      let moves = getLegalMoves(board, holdId);
+      if (moves.length > 0) {
+        return {
+          useHold: true,
+          x: moves[0].x,
+          y: moves[0].y,
+          rot: moves[0].rot,
+          shape: moves[0].shape,
+          forcedHold: true,
+          testHold: true
+        };
+      }
+    }
+    
+    let bestMove = null;
+    let bestScore = -Infinity;
+    
+    // FIRST PRIORITY: Look for immediate line clearing opportunities
+    let currentScoringMoves = findScoringMoves(board, currentId);
+    if (currentScoringMoves.length > 0) {
+      bestMove = {
+        useHold: false,
+        x: currentScoringMoves[0].x,
+        y: currentScoringMoves[0].y,
+        rot: currentScoringMoves[0].rot,
+        shape: currentScoringMoves[0].shape,
+        linesCleared: currentScoringMoves[0].linesCleared
+      };
+      bestScore = currentScoringMoves[0].score;
+      console.log(`AI Debug: Found current piece scoring move: ${currentScoringMoves[0].linesCleared} lines`);
+    }
+    
+    // SECOND PRIORITY: Check hold piece for scoring opportunities
     if (holdId !== null) {
-      console.log(`AI Debug: Evaluating hold piece for regular moves`);
-      moves = getLegalMoves(board, holdId);
-      let holdBestScore = -Infinity;
-      let holdBestMove = null;
+      let holdScoringMoves = findScoringMoves(board, holdId);
+      console.log(`AI Debug: Hold piece scoring moves: ${holdScoringMoves.length}`);
+      if (holdScoringMoves.length > 0 && holdScoringMoves[0].linesCleared > (bestMove ? bestMove.linesCleared : 0)) {
+        bestMove = {
+          useHold: true,
+          x: holdScoringMoves[0].x,
+          y: holdScoringMoves[0].y,
+          rot: holdScoringMoves[0].rot,
+          shape: holdScoringMoves[0].shape,
+          linesCleared: holdScoringMoves[0].linesCleared
+        };
+        bestScore = holdScoringMoves[0].score;
+        console.log(`AI Debug: Using hold piece for scoring: ${holdScoringMoves[0].linesCleared} lines`);
+      }
+    }
+    
+    // THIRD PRIORITY: If no immediate scoring, use regular evaluation with improved hold logic
+    if (!bestMove) {
+      console.log(`AI Debug: No immediate scoring, using regular evaluation`);
+      
+      // Try current piece without using hold
+      let moves = getLegalMoves(board, currentId);
+      let currentBestScore = -Infinity;
+      let currentBestMove = null;
       
       for (let move of moves) {
         let newBoard = placePiece(board, move.shape, move.x, move.y);
@@ -475,13 +454,10 @@ function findBestMove(board, current, held, nextQueue) {
         // Add bonus for any lines cleared
         score += clearedData.linesCleared * 500;
         
-        // MASSIVE bonus for using hold strategically
-        score += 2000; // Increased from 500 to 2000
-        
-        if (score > holdBestScore) {
-          holdBestScore = score;
-          holdBestMove = {
-            useHold: true,
+        if (score > currentBestScore) {
+          currentBestScore = score;
+          currentBestMove = {
+            useHold: false,
             x: move.x,
             y: move.y,
             rot: move.rot,
@@ -490,80 +466,91 @@ function findBestMove(board, current, held, nextQueue) {
         }
       }
       
-      // Compare hold vs current piece
-      console.log(`AI Debug: Hold score: ${holdBestScore}, Current score: ${currentBestScore}`);
-      
-      // Use hold if it's even close to current piece score
-      if (holdBestScore >= currentBestScore - 1000) { // Much more lenient comparison
-        bestMove = holdBestMove;
-        bestScore = holdBestScore;
-        console.log(`AI Debug: Using hold piece (score: ${holdBestScore})`);
+      // Try hold piece if available - with MUCH better evaluation
+      if (holdId !== null) {
+        console.log(`AI Debug: Evaluating hold piece for regular moves`);
+        moves = getLegalMoves(board, holdId);
+        let holdBestScore = -Infinity;
+        let holdBestMove = null;
+        
+        for (let move of moves) {
+          let newBoard = placePiece(board, move.shape, move.x, move.y);
+          let clearedData = clearLines(newBoard);
+          let score = evaluateWithLookahead(clearedData.board, currentId, holdId, nextIds, 2);
+          
+          // Add bonus for any lines cleared
+          score += clearedData.linesCleared * 500;
+          
+          // MASSIVE bonus for using hold strategically
+          score += 2000; // Increased from 500 to 2000
+          
+          if (score > holdBestScore) {
+            holdBestScore = score;
+            holdBestMove = {
+              useHold: true,
+              x: move.x,
+              y: move.y,
+              rot: move.rot,
+              shape: move.shape
+            };
+          }
+        }
+        
+        // Compare hold vs current piece
+        console.log(`AI Debug: Hold score: ${holdBestScore}, Current score: ${currentBestScore}`);
+        
+        // Use hold if it's even close to current piece score
+        if (holdBestScore >= currentBestScore - 1000) { // Much more lenient comparison
+          bestMove = holdBestMove;
+          bestScore = holdBestScore;
+          console.log(`AI Debug: Using hold piece (score: ${holdBestScore})`);
+        } else {
+          bestMove = currentBestMove;
+          bestScore = currentBestScore;
+          console.log(`AI Debug: Using current piece (score: ${currentBestScore})`);
+        }
       } else {
         bestMove = currentBestMove;
         bestScore = currentBestScore;
-        console.log(`AI Debug: Using current piece (score: ${currentBestScore})`);
       }
-    } else {
-      bestMove = currentBestMove;
-      bestScore = currentBestScore;
-    }
-  }
-  
-  // FOURTH PRIORITY: Look for well-filling opportunities (MORE AGGRESSIVE)
-  if (!bestMove || bestScore < -500) { // Changed from -1000 to -500
-    console.log(`AI Debug: Looking for well-filling opportunities`);
-    let currentWellMoves = findWellFillingMoves(board, currentId);
-    if (currentWellMoves.length > 0) {
-      bestMove = {
-        useHold: false,
-        x: currentWellMoves[0].x,
-        y: currentWellMoves[0].y,
-        rot: currentWellMoves[0].rot,
-        shape: currentWellMoves[0].shape,
-        wellFilling: true
-      };
-      console.log(`AI Debug: Using current piece for well-filling`);
     }
     
-    // Check hold piece for well filling too
-    if (holdId !== null) {
-      let holdWellMoves = findWellFillingMoves(board, holdId);
-      if (holdWellMoves.length > 0 && (!bestMove || holdWellMoves[0].wellScore > (bestMove.wellScore || 0))) {
+    // FOURTH PRIORITY: Look for well-filling opportunities (MORE AGGRESSIVE)
+    if (!bestMove || bestScore < -500) { // Changed from -1000 to -500
+      console.log(`AI Debug: Looking for well-filling opportunities`);
+      let currentWellMoves = findWellFillingMoves(board, currentId);
+      if (currentWellMoves.length > 0) {
         bestMove = {
-          useHold: true,
-          x: holdWellMoves[0].x,
-          y: holdWellMoves[0].y,
-          rot: holdWellMoves[0].rot,
-          shape: holdWellMoves[0].shape,
+          useHold: false,
+          x: currentWellMoves[0].x,
+          y: currentWellMoves[0].y,
+          rot: currentWellMoves[0].rot,
+          shape: currentWellMoves[0].shape,
           wellFilling: true
         };
-        console.log(`AI Debug: Using hold piece for well-filling`);
+        console.log(`AI Debug: Using current piece for well-filling`);
+      }
+      
+      // Check hold piece for well filling too
+      if (holdId !== null) {
+        let holdWellMoves = findWellFillingMoves(board, holdId);
+        if (holdWellMoves.length > 0 && (!bestMove || holdWellMoves[0].wellScore > (bestMove.wellScore || 0))) {
+          bestMove = {
+            useHold: true,
+            x: holdWellMoves[0].x,
+            y: holdWellMoves[0].y,
+            rot: holdWellMoves[0].rot,
+            shape: holdWellMoves[0].shape,
+            wellFilling: true
+          };
+          console.log(`AI Debug: Using hold piece for well-filling`);
+        }
       }
     }
-  }
-  
-  // FIFTH PRIORITY: Force hold usage if we have a hold piece and no good move
-  if (!bestMove && holdId !== null) {
-    console.log(`AI Debug: Forcing hold usage as last resort`);
-    let moves = getLegalMoves(board, holdId);
-    if (moves.length > 0) {
-      bestMove = {
-        useHold: true,
-        x: moves[0].x,
-        y: moves[0].y,
-        rot: moves[0].rot,
-        shape: moves[0].shape,
-        forcedHold: true
-      };
-      console.log(`AI Debug: Forced hold usage`);
-    }
-  }
-  
-  // SIXTH PRIORITY: Simple override - use hold if available and we haven't used it recently
-  if (holdId !== null && !bestMove.useHold) {
-    let moveCount = window.aiMoveCount || 0;
-    if (moveCount % 2 === 0) { // Every other move
-      console.log(`AI Debug: Simple override - using hold every other move`);
+    
+    // FIFTH PRIORITY: Force hold usage if we have a hold piece and no good move
+    if (!bestMove && holdId !== null) {
+      console.log(`AI Debug: Forcing hold usage as last resort`);
       let moves = getLegalMoves(board, holdId);
       if (moves.length > 0) {
         bestMove = {
@@ -572,16 +559,44 @@ function findBestMove(board, current, held, nextQueue) {
           y: moves[0].y,
           rot: moves[0].rot,
           shape: moves[0].shape,
-          simpleOverride: true
+          forcedHold: true
         };
+        console.log(`AI Debug: Forced hold usage`);
       }
     }
+    
+    // SIXTH PRIORITY: Simple override - use hold if available and we haven't used it recently
+    if (holdId !== null && !bestMove.useHold) {
+      let moveCount = window.aiMoveCount || 0;
+      if (moveCount % 2 === 0) { // Every other move
+        console.log(`AI Debug: Simple override - using hold every other move`);
+        let moves = getLegalMoves(board, holdId);
+        if (moves.length > 0) {
+          bestMove = {
+            useHold: true,
+            x: moves[0].x,
+            y: moves[0].y,
+            rot: moves[0].rot,
+            shape: moves[0].shape,
+            simpleOverride: true
+          };
+        }
+      }
+    }
+    
+    console.log(`AI Debug: Final decision - useHold: ${bestMove ? bestMove.useHold : 'null'}`);
+    return bestMove;
+  } catch (error) {
+    console.error('AI Debug: Error in findBestMove:', error);
+    console.error('AI Debug: Error stack:', error.stack);
+    return null;
   }
-  
-  console.log(`AI Debug: Final decision - useHold: ${bestMove ? bestMove.useHold : 'null'}`);
-  return bestMove;
 }
 
 // Export for use in main.js
 window.findBestMove = findBestMove;
 window.evaluateBoard = evaluateBoard; 
+
+// Debug: Confirm improved AI is loaded
+console.log('🚀 Improved Tetris AI loaded successfully!');
+console.log('🔧 Available functions: findBestMove, evaluateBoard'); 

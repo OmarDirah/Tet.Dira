@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Canvas Debug Test</title>
+  <style>
+    body {
+      background: #222;
+      color: #fff;
+      font-family: sans-serif;
+      text-align: center;
+      padding: 20px;
+    }
+    .test-area {
+      margin: 20px;
+      padding: 20px;
+      border: 2px solid #666;
+      border-radius: 8px;
+    }
+    canvas {
+      border: 2px solid #fff;
+      background: #000;
+      display: block;
+      margin: 10px auto;
+    }
+    .status {
+      margin: 10px;
+      padding: 10px;
+      border-radius: 5px;
+    }
+    .success { background: #4CAF50; }
+    .error { background: #f44336; }
+    .info { background: #2196F3; }
+    button {
+      background: #4CAF50;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      margin: 5px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    button:hover { background: #45a049; }
+  </style>
+</head>
+<body>
+  <h1>Canvas Debug Test</h1>
+  
+  <div class="test-area">
+    <h2>Main Game Canvas Test</h2>
+    <canvas id="gameCanvas" width="300" height="600"></canvas>
+    <div id="gameStatus"></div>
+    <button onclick="testGameCanvas()">Test Game Canvas</button>
+  </div>
+  
+  <div class="test-area">
+    <h2>Hold Canvas Test</h2>
+    <canvas id="holdCanvas" width="80" height="80"></canvas>
+    <div id="holdStatus"></div>
+    <button onclick="testHoldCanvas()">Test Hold Canvas</button>
+  </div>
+  
+  <div class="test-area">
+    <h2>Next Canvas Test</h2>
+    <canvas id="nextCanvas" width="80" height="160"></canvas>
+    <div id="nextStatus"></div>
+    <button onclick="testNextCanvas()">Test Next Canvas</button>
+  </div>
+  
+  <div class="test-area">
+    <h2>DOM Elements Test</h2>
+    <div id="domStatus"></div>
+    <button onclick="testDOM()">Test DOM Elements</button>
+  </div>
+  
+  <script>
+    function updateStatus(elementId, message, type = 'info') {
+      const element = document.getElementById(elementId);
+      if (element) {
+        element.innerHTML = `<div class="status ${type}">${message}</div>`;
+      }
+      console.log(message);
+    }
+    
+    function testGameCanvas() {
+      try {
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        if (!canvas || !ctx) {
+          updateStatus('gameStatus', '❌ Canvas or context not available', 'error');
+          return;
+        }
+        
+        // Clear canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw background
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw grid
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 1;
+        
+        // Horizontal lines
+        for (let i = 0; i <= 20; i++) {
+          ctx.beginPath();
+          ctx.moveTo(0, i * 30);
+          ctx.lineTo(300, i * 30);
+          ctx.stroke();
+        }
+        
+        // Vertical lines
+        for (let i = 0; i <= 10; i++) {
+          ctx.beginPath();
+          ctx.moveTo(i * 30, 0);
+          ctx.lineTo(i * 30, 600);
+          ctx.stroke();
+        }
+        
+        // Draw a test piece
+        ctx.fillStyle = '#ff0000';
+        ctx.fillRect(90, 30, 29, 29);
+        ctx.fillRect(120, 30, 29, 29);
+        ctx.fillRect(90, 60, 29, 29);
+        ctx.fillRect(120, 60, 29, 29);
+        
+        updateStatus('gameStatus', '✅ Game canvas working! Grid and test piece drawn', 'success');
+      } catch (error) {
+        updateStatus('gameStatus', `❌ Error: ${error.message}`, 'error');
+      }
+    }
+    
+    function testHoldCanvas() {
+      try {
+        const canvas = document.getElementById('holdCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        if (!canvas || !ctx) {
+          updateStatus('holdStatus', '❌ Canvas or context not available', 'error');
+          return;
+        }
+        
+        // Clear canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw background
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw test piece
+        ctx.fillStyle = '#00ff00';
+        ctx.fillRect(20, 20, 19, 19);
+        ctx.fillRect(40, 20, 19, 19);
+        ctx.fillRect(20, 40, 19, 19);
+        ctx.fillRect(40, 40, 19, 19);
+        
+        updateStatus('holdStatus', '✅ Hold canvas working! Test piece drawn', 'success');
+      } catch (error) {
+        updateStatus('holdStatus', `❌ Error: ${error.message}`, 'error');
+      }
+    }
+    
+    function testNextCanvas() {
+      try {
+        const canvas = document.getElementById('nextCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        if (!canvas || !ctx) {
+          updateStatus('nextStatus', '❌ Canvas or context not available', 'error');
+          return;
+        }
+        
+        // Clear canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw background
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw test pieces
+        ctx.fillStyle = '#0000ff';
+        ctx.fillRect(20, 10, 11, 11);
+        ctx.fillRect(32, 10, 11, 11);
+        ctx.fillRect(20, 22, 11, 11);
+        ctx.fillRect(32, 22, 11, 11);
+        
+        ctx.fillStyle = '#ffff00';
+        ctx.fillRect(20, 60, 11, 11);
+        ctx.fillRect(32, 60, 11, 11);
+        ctx.fillRect(44, 60, 11, 11);
+        ctx.fillRect(56, 60, 11, 11);
+        
+        updateStatus('nextStatus', '✅ Next canvas working! Test pieces drawn', 'success');
+      } catch (error) {
+        updateStatus('nextStatus', `❌ Error: ${error.message}`, 'error');
+      }
+    }
+    
+    function testDOM() {
+      const elements = [
+        'gameCanvas', 'holdCanvas', 'nextCanvas', 
+        'aiSolveButton', 'consoleOutput', 'scoreValue'
+      ];
+      
+      let results = [];
+      elements.forEach(id => {
+        const element = document.getElementById(id);
+        results.push(`${id}: ${element ? '✅' : '❌'}`);
+      });
+      
+      updateStatus('domStatus', `DOM Elements:<br>${results.join('<br>')}`, 'info');
+    }
+    
+    // Run tests when page loads
+    window.addEventListener('load', () => {
+      console.log('🔍 Canvas debug page loaded');
+      testDOM();
+      setTimeout(() => {
+        testGameCanvas();
+        testHoldCanvas();
+        testNextCanvas();
+      }, 100);
+    });
+  </script>
+</body>
+</html> 
