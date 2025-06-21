@@ -103,12 +103,15 @@ function pickCleanestMove(board, pieceId) {
     const bestMove = window.findBestMove(boardArr, currentPiece, held, [next, ...nextQueue]);
     
     if (bestMove) {
-      // Convert the improved AI result back to the expected format
+      // Return the complete move object with all metadata
       return {
         x: bestMove.x,
         y: bestMove.y,
         rot: bestMove.rot,
-        shape: bestMove.shape
+        shape: bestMove.shape,
+        useHold: bestMove.useHold || false,
+        linesCleared: bestMove.linesCleared || 0,
+        wellFilling: bestMove.wellFilling || false
       };
     }
   }
@@ -151,7 +154,21 @@ function pickCleanestMove(board, pieceId) {
       bestMove = move;
     }
   }
-  return bestMove;
+  
+  // Return fallback move with default metadata
+  if (bestMove) {
+    return {
+      x: bestMove.x,
+      y: bestMove.y,
+      rot: bestMove.rot,
+      shape: bestMove.shape,
+      useHold: false,
+      linesCleared: 0,
+      wellFilling: false
+    };
+  }
+  
+  return null;
 }
 
 function toggleAI() {
@@ -213,6 +230,9 @@ function executeAIMoveStep() {
     if(!bestMove) return;
     aiMoveSequence = [];
 
+    // Debug logging
+    addToConsole(`🔍 AI Decision: useHold=${bestMove.useHold}, canHold=${canHold}, held=${held ? 'yes' : 'no'}`);
+
     // Handle hold if the improved AI suggests it
     if (bestMove.useHold && canHold) {
       aiMoveSequence.push('hold');
@@ -223,6 +243,8 @@ function executeAIMoveStep() {
       } else {
         addToConsole(`💾 AI using HOLD for better positioning`);
       }
+    } else if (bestMove.useHold && !canHold) {
+      addToConsole(`⚠️ AI wanted to use HOLD but can't (already used)`);
     }
 
     const horizontalSteps = bestMove.x - current.x;

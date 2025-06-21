@@ -346,6 +346,9 @@ function findBestMove(board, current, held, nextQueue) {
   let holdId = held ? getPieceId(held) : null;
   let nextIds = nextQueue.map(piece => getPieceId(piece));
   
+  // Debug logging
+  console.log(`AI Debug: currentId=${currentId}, holdId=${holdId}, nextIds=${nextIds.join(',')}`);
+  
   let bestMove = null;
   let bestScore = -Infinity;
   
@@ -361,11 +364,13 @@ function findBestMove(board, current, held, nextQueue) {
       linesCleared: currentScoringMoves[0].linesCleared
     };
     bestScore = currentScoringMoves[0].score;
+    console.log(`AI Debug: Found current piece scoring move: ${currentScoringMoves[0].linesCleared} lines`);
   }
   
   // SECOND PRIORITY: Check hold piece for scoring opportunities
   if (holdId !== null) {
     let holdScoringMoves = findScoringMoves(board, holdId);
+    console.log(`AI Debug: Hold piece scoring moves: ${holdScoringMoves.length}`);
     if (holdScoringMoves.length > 0 && holdScoringMoves[0].linesCleared > (bestMove ? bestMove.linesCleared : 0)) {
       bestMove = {
         useHold: true,
@@ -376,11 +381,14 @@ function findBestMove(board, current, held, nextQueue) {
         linesCleared: holdScoringMoves[0].linesCleared
       };
       bestScore = holdScoringMoves[0].score;
+      console.log(`AI Debug: Using hold piece for scoring: ${holdScoringMoves[0].linesCleared} lines`);
     }
   }
   
   // THIRD PRIORITY: If no immediate scoring, use regular evaluation with improved hold logic
   if (!bestMove) {
+    console.log(`AI Debug: No immediate scoring, using regular evaluation`);
+    
     // Try current piece without using hold
     let moves = getLegalMoves(board, currentId);
     for (let move of moves) {
@@ -405,6 +413,7 @@ function findBestMove(board, current, held, nextQueue) {
     
     // Try hold piece if available - with better evaluation
     if (holdId !== null) {
+      console.log(`AI Debug: Evaluating hold piece for regular moves`);
       moves = getLegalMoves(board, holdId);
       for (let move of moves) {
         let newBoard = placePiece(board, move.shape, move.x, move.y);
@@ -426,6 +435,7 @@ function findBestMove(board, current, held, nextQueue) {
             rot: move.rot,
             shape: move.shape
           };
+          console.log(`AI Debug: Hold piece gives better score: ${score} vs ${bestScore}`);
         }
       }
     }
@@ -433,6 +443,7 @@ function findBestMove(board, current, held, nextQueue) {
   
   // FOURTH PRIORITY: If still no good move, look for well-filling opportunities
   if (!bestMove || bestScore < -1000) {
+    console.log(`AI Debug: Looking for well-filling opportunities`);
     let currentWellMoves = findWellFillingMoves(board, currentId);
     if (currentWellMoves.length > 0) {
       bestMove = {
@@ -457,10 +468,12 @@ function findBestMove(board, current, held, nextQueue) {
           shape: holdWellMoves[0].shape,
           wellFilling: true
         };
+        console.log(`AI Debug: Using hold piece for well-filling`);
       }
     }
   }
   
+  console.log(`AI Debug: Final decision - useHold: ${bestMove ? bestMove.useHold : 'null'}`);
   return bestMove;
 }
 
