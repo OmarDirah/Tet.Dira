@@ -357,6 +357,27 @@ function findBestMove(board, current, held, nextQueue) {
   // Debug logging
   console.log(`AI Debug: currentId=${currentId}, holdId=${holdId}, nextIds=${nextIds.join(',')}`);
   
+  // SIMPLE TEST: Force hold usage every few moves to test if it works
+  let moveCount = window.aiMoveCount || 0;
+  window.aiMoveCount = moveCount + 1;
+  
+  // Force hold every 3 moves if we have a hold piece
+  if (holdId !== null && moveCount % 3 === 0) {
+    console.log(`AI Debug: FORCING HOLD for testing (move ${moveCount})`);
+    let moves = getLegalMoves(board, holdId);
+    if (moves.length > 0) {
+      return {
+        useHold: true,
+        x: moves[0].x,
+        y: moves[0].y,
+        rot: moves[0].rot,
+        shape: moves[0].shape,
+        forcedHold: true,
+        testHold: true
+      };
+    }
+  }
+  
   let bestMove = null;
   let bestScore = -Infinity;
   

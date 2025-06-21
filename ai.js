@@ -211,6 +211,7 @@ function executeAIMoveStep() {
         break;
       }
       case 'hold':
+        addToConsole(`🔧 EXECUTING HOLD: held=${held ? 'yes' : 'no'}, canHold=${canHold}`);
         holdPiece();
         break;
       case 'hardDrop':
@@ -230,13 +231,19 @@ function executeAIMoveStep() {
     if(!bestMove) return;
     aiMoveSequence = [];
 
-    // Debug logging
+    // Enhanced debug logging
     addToConsole(`🔍 AI Decision: useHold=${bestMove.useHold}, canHold=${canHold}, held=${held ? 'yes' : 'no'}`);
+    addToConsole(`🔍 Move details: x=${bestMove.x}, y=${bestMove.y}, rot=${bestMove.rot}`);
+    if (bestMove.linesCleared) addToConsole(`🔍 Lines to clear: ${bestMove.linesCleared}`);
+    if (bestMove.wellFilling) addToConsole(`🔍 Well filling: yes`);
+    if (bestMove.forcedHold) addToConsole(`🔍 Forced hold: yes`);
 
     // Handle hold if the improved AI suggests it
     if (bestMove.useHold && canHold) {
       aiMoveSequence.push('hold');
-      if (bestMove.forcedHold) {
+      if (bestMove.testHold) {
+        addToConsole(`🧪 TEST: AI forced to use HOLD for testing`);
+      } else if (bestMove.forcedHold) {
         addToConsole(`🔄 AI forced to use HOLD as last resort`);
       } else if (bestMove.wellFilling) {
         addToConsole(`🔧 AI using HOLD for well-filling strategy`);
@@ -247,6 +254,8 @@ function executeAIMoveStep() {
       }
     } else if (bestMove.useHold && !canHold) {
       addToConsole(`⚠️ AI wanted to use HOLD but can't (already used)`);
+    } else if (!bestMove.useHold) {
+      addToConsole(`❌ AI decided NOT to use hold`);
     }
 
     const horizontalSteps = bestMove.x - current.x;
