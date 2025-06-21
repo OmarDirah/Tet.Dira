@@ -1,4 +1,14 @@
-// ai.js – Robust Hole Minimizing AI
+// ai.js – Improved AI with advanced heuristics and lookahead
+
+const PIECES = [
+  [[1,1,1,1]],
+  [[1,1],[1,1]],
+  [[0,1,0],[1,1,1]],
+  [[0,1,1],[1,1,0]],
+  [[1,1,0],[0,1,1]],
+  [[1,0,0],[1,1,1]],
+  [[0,0,1],[1,1,1]]
+];
 
 function getHelperId(piece) {
   if (!piece || !piece.shape) return 0;
@@ -82,7 +92,28 @@ function countHoles(board) {
   return holes;
 }
 
+// Improved move selection using the new AI
 function pickCleanestMove(board, pieceId) {
+  // Convert board to binary format for the improved AI
+  const boardArr = board.map(row => row.map(cell => (cell ? 1 : 0)));
+  
+  // Use the improved AI if available
+  if (window.findBestMove) {
+    const currentPiece = { shape: PIECES[pieceId] };
+    const bestMove = window.findBestMove(boardArr, currentPiece, held, [next, ...nextQueue]);
+    
+    if (bestMove) {
+      // Convert the improved AI result back to the expected format
+      return {
+        x: bestMove.x,
+        y: bestMove.y,
+        rot: bestMove.rot,
+        shape: bestMove.shape
+      };
+    }
+  }
+  
+  // Fallback to original algorithm if improved AI is not available
   const moves = getLegalMoves(board, pieceId);
   let bestMove = null, bestScore = -Infinity;
   for (const move of moves) {
@@ -131,6 +162,7 @@ function toggleAI() {
     aiMoveSequence = [];
     aiMoveStep = 0;
     aiMoveInterval = setInterval(executeAIMoveStep, 50);
+    addToConsole('AI Started - Using Improved Heuristics');
   } else {
     document.getElementById('aiSolveButton').textContent = 'AI Solve';
     document.getElementById('aiSolveButton').style.background = 'linear-gradient(135deg, #4CAF50, #45a049)';
@@ -140,6 +172,7 @@ function toggleAI() {
     }
     aiMoveSequence = [];
     aiMoveStep = 0;
+    addToConsole('AI Stopped');
   }
 }
 
@@ -160,6 +193,9 @@ function executeAIMoveStep() {
         if(isValidMove(current, 0, 0, rotated)) current.shape = rotated;
         break;
       }
+      case 'hold':
+        holdPiece();
+        break;
       case 'hardDrop':
         while(isValidMove(current, 0, 1)) current.y++;
         placePiece(current);
@@ -176,6 +212,11 @@ function executeAIMoveStep() {
     const bestMove = pickCleanestMove(boardArr, getHelperId(current));
     if(!bestMove) return;
     aiMoveSequence = [];
+
+    // Handle hold if the improved AI suggests it
+    if (bestMove.useHold && canHold) {
+      aiMoveSequence.push('hold');
+    }
 
     const horizontalSteps = bestMove.x - current.x;
     if(horizontalSteps > 0) {
