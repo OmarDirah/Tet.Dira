@@ -216,6 +216,7 @@ function executeAIMoveStep() {
     // Handle hold if the improved AI suggests it
     if (bestMove.useHold && canHold) {
       aiMoveSequence.push('hold');
+      addToConsole(`AI using HOLD for better scoring opportunity`);
     }
 
     const horizontalSteps = bestMove.x - current.x;
@@ -226,6 +227,12 @@ function executeAIMoveStep() {
     }
     for(let i = 0; i < bestMove.rot; i++) aiMoveSequence.push('rotate');
     aiMoveSequence.push('hardDrop');
+    
+    // Log scoring information if available
+    if (bestMove.linesCleared) {
+      addToConsole(`🎯 AI targeting ${bestMove.linesCleared} line(s) clear!`);
+    }
+    
     aiMoveStep = 0;
   }
 }

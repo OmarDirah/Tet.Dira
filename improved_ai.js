@@ -106,6 +106,7 @@ function evaluateBoard(board, linesCleared = 0) {
   let colTransitions = 0;
   let holesBelowBlocks = 0;
   let wellSums = 0;
+  let potentialLines = 0;
   
   // Calculate column heights and holes
   for (let c = 0; c < COLS; c++) {
@@ -164,17 +165,28 @@ function evaluateBoard(board, linesCleared = 0) {
     if (board[ROWS-1][c]) colTransitions++;
   }
   
-  // Advanced scoring weights (tuned for better performance)
+  // Count potential lines (rows that are mostly filled)
+  for (let r = 0; r < ROWS; r++) {
+    let filledCells = 0;
+    for (let c = 0; c < COLS; c++) {
+      if (board[r][c]) filledCells++;
+    }
+    if (filledCells >= COLS - 1) potentialLines += 2; // Almost complete lines
+    if (filledCells >= COLS - 2) potentialLines += 1; // Nearly complete lines
+  }
+  
+  // SCORING-FOCUSED weights - prioritize line clearing and scoring
   const weights = {
-    aggregateHeight: -0.51066,
-    linesCleared: 0.760666,
-    holes: -0.35663,
-    bumpiness: -0.184483,
-    rowTransitions: -0.184483,
-    colTransitions: -0.184483,
-    wells: -0.1,
-    wellSums: -0.01,
-    holesBelowBlocks: -0.5
+    aggregateHeight: -0.3,        // Reduced penalty for height
+    linesCleared: 2.0,            // HEAVILY prioritize line clearing
+    holes: -0.2,                  // Reduced hole penalty
+    bumpiness: -0.1,              // Reduced bumpiness penalty
+    rowTransitions: -0.1,         // Reduced transition penalty
+    colTransitions: -0.1,         // Reduced transition penalty
+    wells: -0.05,                 // Reduced well penalty
+    wellSums: -0.005,             // Reduced well sum penalty
+    holesBelowBlocks: -0.2,       // Reduced hole penalty
+    potentialLines: 1.5           // NEW: Bonus for potential lines
   };
   
   return weights.aggregateHeight * aggregateHeight
@@ -185,7 +197,8 @@ function evaluateBoard(board, linesCleared = 0) {
        + weights.colTransitions * colTransitions
        + weights.wells * wells
        + weights.wellSums * wellSums
-       + weights.holesBelowBlocks * holesBelowBlocks;
+       + weights.holesBelowBlocks * holesBelowBlocks
+       + weights.potentialLines * potentialLines;
 }
 
 // Lookahead evaluation for next pieces
@@ -226,6 +239,27 @@ function evaluateWithLookahead(board, currentId, holdId, nextIds, depth = 2) {
   return bestScore;
 }
 
+// Function to detect immediate line clearing opportunities
+function findScoringMoves(board, pieceId) {
+  let moves = getLegalMoves(board, pieceId);
+  let scoringMoves = [];
+  
+  for (let move of moves) {
+    let newBoard = placePiece(board, move.shape, move.x, move.y);
+    let clearedData = clearLines(newBoard);
+    
+    if (clearedData.linesCleared > 0) {
+      scoringMoves.push({
+        ...move,
+        linesCleared: clearedData.linesCleared,
+        score: clearedData.linesCleared * 1000 // High priority for line clearing
+      });
+    }
+  }
+  
+  return scoringMoves.sort((a, b) => b.linesCleared - a.linesCleared);
+}
+
 // Main AI function that finds the best move
 function findBestMove(board, current, held, nextQueue) {
   let currentId = getPieceId(current);
@@ -235,42 +269,81 @@ function findBestMove(board, current, held, nextQueue) {
   let bestMove = null;
   let bestScore = -Infinity;
   
-  // Try current piece without using hold
-  let moves = getLegalMoves(board, currentId);
-  for (let move of moves) {
-    let newBoard = placePiece(board, move.shape, move.x, move.y);
-    let clearedData = clearLines(newBoard);
-    let score = evaluateWithLookahead(clearedData.board, currentId, holdId, nextIds, 2);
-    
-    if (score > bestScore) {
-      bestScore = score;
+  // FIRST PRIORITY: Look for immediate line clearing opportunities
+  let currentScoringMoves = findScoringMoves(board, currentId);
+  if (currentScoringMoves.length > 0) {
+    bestMove = {
+      useHold: false,
+      x: currentScoringMoves[0].x,
+      y: currentScoringMoves[0].y,
+      rot: currentScoringMoves[0].rot,
+      shape: currentScoringMoves[0].shape,
+      linesCleared: currentScoringMoves[0].linesCleared
+    };
+    bestScore = currentScoringMoves[0].score;
+  }
+  
+  // SECOND PRIORITY: Check hold piece for scoring opportunities
+  if (holdId !== null) {
+    let holdScoringMoves = findScoringMoves(board, holdId);
+    if (holdScoringMoves.length > 0 && holdScoringMoves[0].linesCleared > (bestMove ? bestMove.linesCleared : 0)) {
       bestMove = {
-        useHold: false,
-        x: move.x,
-        y: move.y,
-        rot: move.rot,
-        shape: move.shape
+        useHold: true,
+        x: holdScoringMoves[0].x,
+        y: holdScoringMoves[0].y,
+        rot: holdScoringMoves[0].rot,
+        shape: holdScoringMoves[0].shape,
+        linesCleared: holdScoringMoves[0].linesCleared
       };
+      bestScore = holdScoringMoves[0].score;
     }
   }
   
-  // Try hold piece if available
-  if (holdId !== null) {
-    moves = getLegalMoves(board, holdId);
+  // THIRD PRIORITY: If no immediate scoring, use regular evaluation with scoring bias
+  if (!bestMove) {
+    // Try current piece without using hold
+    let moves = getLegalMoves(board, currentId);
     for (let move of moves) {
       let newBoard = placePiece(board, move.shape, move.x, move.y);
       let clearedData = clearLines(newBoard);
       let score = evaluateWithLookahead(clearedData.board, currentId, holdId, nextIds, 2);
       
+      // Add bonus for any lines cleared
+      score += clearedData.linesCleared * 500;
+      
       if (score > bestScore) {
         bestScore = score;
         bestMove = {
-          useHold: true,
+          useHold: false,
           x: move.x,
           y: move.y,
           rot: move.rot,
           shape: move.shape
         };
+      }
+    }
+    
+    // Try hold piece if available
+    if (holdId !== null) {
+      moves = getLegalMoves(board, holdId);
+      for (let move of moves) {
+        let newBoard = placePiece(board, move.shape, move.x, move.y);
+        let clearedData = clearLines(newBoard);
+        let score = evaluateWithLookahead(clearedData.board, currentId, holdId, nextIds, 2);
+        
+        // Add bonus for any lines cleared
+        score += clearedData.linesCleared * 500;
+        
+        if (score > bestScore) {
+          bestScore = score;
+          bestMove = {
+            useHold: true,
+            x: move.x,
+            y: move.y,
+            rot: move.rot,
+            shape: move.shape
+          };
+        }
       }
     }
   }
