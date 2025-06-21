@@ -216,7 +216,13 @@ function executeAIMoveStep() {
     // Handle hold if the improved AI suggests it
     if (bestMove.useHold && canHold) {
       aiMoveSequence.push('hold');
-      addToConsole(`AI using HOLD for better scoring opportunity`);
+      if (bestMove.wellFilling) {
+        addToConsole(`🔧 AI using HOLD for well-filling strategy`);
+      } else if (bestMove.linesCleared) {
+        addToConsole(`🎯 AI using HOLD to clear ${bestMove.linesCleared} line(s)!`);
+      } else {
+        addToConsole(`💾 AI using HOLD for better positioning`);
+      }
     }
 
     const horizontalSteps = bestMove.x - current.x;
@@ -231,6 +237,8 @@ function executeAIMoveStep() {
     // Log scoring information if available
     if (bestMove.linesCleared) {
       addToConsole(`🎯 AI targeting ${bestMove.linesCleared} line(s) clear!`);
+    } else if (bestMove.wellFilling) {
+      addToConsole(`🕳️ AI filling well for better board structure`);
     }
     
     aiMoveStep = 0;

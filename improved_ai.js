@@ -107,6 +107,7 @@ function evaluateBoard(board, linesCleared = 0) {
   let holesBelowBlocks = 0;
   let wellSums = 0;
   let potentialLines = 0;
+  let wellOpportunities = 0;
   
   // Calculate column heights and holes
   for (let c = 0; c < COLS; c++) {
@@ -175,7 +176,18 @@ function evaluateBoard(board, linesCleared = 0) {
     if (filledCells >= COLS - 2) potentialLines += 1; // Nearly complete lines
   }
   
-  // SCORING-FOCUSED weights - prioritize line clearing and scoring
+  // Detect well-filling opportunities (columns that are 1-2 blocks shorter than neighbors)
+  for (let c = 0; c < COLS; c++) {
+    let leftHeight = c > 0 ? heights[c-1] : 0;
+    let rightHeight = c < COLS-1 ? heights[c+1] : 0;
+    let currentHeight = heights[c];
+    
+    if (leftHeight > currentHeight + 1 || rightHeight > currentHeight + 1) {
+      wellOpportunities += 1;
+    }
+  }
+  
+  // IMPROVED weights - better hold usage and well filling
   const weights = {
     aggregateHeight: -0.3,        // Reduced penalty for height
     linesCleared: 2.0,            // HEAVILY prioritize line clearing
@@ -183,10 +195,11 @@ function evaluateBoard(board, linesCleared = 0) {
     bumpiness: -0.1,              // Reduced bumpiness penalty
     rowTransitions: -0.1,         // Reduced transition penalty
     colTransitions: -0.1,         // Reduced transition penalty
-    wells: -0.05,                 // Reduced well penalty
-    wellSums: -0.005,             // Reduced well sum penalty
+    wells: -0.02,                 // Much reduced well penalty (encourage well creation)
+    wellSums: -0.002,             // Much reduced well sum penalty
     holesBelowBlocks: -0.2,       // Reduced hole penalty
-    potentialLines: 1.5           // NEW: Bonus for potential lines
+    potentialLines: 1.5,          // Bonus for potential lines
+    wellOpportunities: 0.3        // NEW: Bonus for well-filling opportunities
   };
   
   return weights.aggregateHeight * aggregateHeight
@@ -198,36 +211,60 @@ function evaluateBoard(board, linesCleared = 0) {
        + weights.wells * wells
        + weights.wellSums * wellSums
        + weights.holesBelowBlocks * holesBelowBlocks
-       + weights.potentialLines * potentialLines;
+       + weights.potentialLines * potentialLines
+       + weights.wellOpportunities * wellOpportunities;
 }
 
-// Lookahead evaluation for next pieces
+// Lookahead evaluation for next pieces - FIXED hold logic
 function evaluateWithLookahead(board, currentId, holdId, nextIds, depth = 2) {
   if (depth === 0) {
     return evaluateBoard(board);
   }
   
   let bestScore = -Infinity;
-  let pieces = [currentId];
-  if (holdId !== null) pieces.push(holdId);
   
-  for (let pieceId of pieces) {
-    let moves = getLegalMoves(board, pieceId);
+  // Try current piece first
+  let moves = getLegalMoves(board, currentId);
+  for (let move of moves) {
+    let newBoard = placePiece(board, move.shape, move.x, move.y);
+    let clearedData = clearLines(newBoard);
+    let score = evaluateBoard(clearedData.board, clearedData.linesCleared);
+    
+    // Recursive lookahead with proper hold piece consideration
+    if (nextIds && nextIds.length > 0) {
+      let nextScore = evaluateWithLookahead(
+        clearedData.board,
+        nextIds[0],
+        holdId, // Keep the same hold piece
+        nextIds.slice(1),
+        depth - 1
+      );
+      score += nextScore * 0.8;
+    }
+    
+    if (score > bestScore) {
+      bestScore = score;
+    }
+  }
+  
+  // Try hold piece if available
+  if (holdId !== null) {
+    moves = getLegalMoves(board, holdId);
     for (let move of moves) {
       let newBoard = placePiece(board, move.shape, move.x, move.y);
       let clearedData = clearLines(newBoard);
       let score = evaluateBoard(clearedData.board, clearedData.linesCleared);
       
-      // Recursive lookahead
+      // Recursive lookahead - now the current piece becomes the new hold
       if (nextIds && nextIds.length > 0) {
         let nextScore = evaluateWithLookahead(
           clearedData.board,
           nextIds[0],
-          holdId,
+          currentId, // Current piece becomes new hold
           nextIds.slice(1),
           depth - 1
         );
-        score += nextScore * 0.8; // Weight for future moves
+        score += nextScore * 0.8;
       }
       
       if (score > bestScore) {
@@ -260,7 +297,50 @@ function findScoringMoves(board, pieceId) {
   return scoringMoves.sort((a, b) => b.linesCleared - a.linesCleared);
 }
 
-// Main AI function that finds the best move
+// Function to detect well-filling opportunities
+function findWellFillingMoves(board, pieceId) {
+  let moves = getLegalMoves(board, pieceId);
+  let wellMoves = [];
+  
+  for (let move of moves) {
+    let newBoard = placePiece(board, move.shape, move.x, move.y);
+    let wellScore = 0;
+    
+    // Check if this move fills a well
+    for (let c = 0; c < COLS; c++) {
+      let height = 0;
+      for (let r = 0; r < ROWS; r++) {
+        if (newBoard[r][c]) {
+          height = ROWS - r;
+          break;
+        }
+      }
+      
+      let leftHeight = c > 0 ? 0 : 0;
+      let rightHeight = c < COLS-1 ? 0 : 0;
+      
+      for (let r = 0; r < ROWS; r++) {
+        if (c > 0 && newBoard[r][c-1]) leftHeight = Math.max(leftHeight, ROWS - r);
+        if (c < COLS-1 && newBoard[r][c+1]) rightHeight = Math.max(rightHeight, ROWS - r);
+      }
+      
+      if (leftHeight > height + 1 || rightHeight > height + 1) {
+        wellScore += 1;
+      }
+    }
+    
+    if (wellScore > 0) {
+      wellMoves.push({
+        ...move,
+        wellScore: wellScore
+      });
+    }
+  }
+  
+  return wellMoves.sort((a, b) => b.wellScore - a.wellScore);
+}
+
+// Main AI function that finds the best move - IMPROVED hold usage
 function findBestMove(board, current, held, nextQueue) {
   let currentId = getPieceId(current);
   let holdId = held ? getPieceId(held) : null;
@@ -299,7 +379,7 @@ function findBestMove(board, current, held, nextQueue) {
     }
   }
   
-  // THIRD PRIORITY: If no immediate scoring, use regular evaluation with scoring bias
+  // THIRD PRIORITY: If no immediate scoring, use regular evaluation with improved hold logic
   if (!bestMove) {
     // Try current piece without using hold
     let moves = getLegalMoves(board, currentId);
@@ -323,7 +403,7 @@ function findBestMove(board, current, held, nextQueue) {
       }
     }
     
-    // Try hold piece if available
+    // Try hold piece if available - with better evaluation
     if (holdId !== null) {
       moves = getLegalMoves(board, holdId);
       for (let move of moves) {
@@ -333,6 +413,9 @@ function findBestMove(board, current, held, nextQueue) {
         
         // Add bonus for any lines cleared
         score += clearedData.linesCleared * 500;
+        
+        // Add bonus for using hold strategically
+        score += 100;
         
         if (score > bestScore) {
           bestScore = score;
@@ -344,6 +427,36 @@ function findBestMove(board, current, held, nextQueue) {
             shape: move.shape
           };
         }
+      }
+    }
+  }
+  
+  // FOURTH PRIORITY: If still no good move, look for well-filling opportunities
+  if (!bestMove || bestScore < -1000) {
+    let currentWellMoves = findWellFillingMoves(board, currentId);
+    if (currentWellMoves.length > 0) {
+      bestMove = {
+        useHold: false,
+        x: currentWellMoves[0].x,
+        y: currentWellMoves[0].y,
+        rot: currentWellMoves[0].rot,
+        shape: currentWellMoves[0].shape,
+        wellFilling: true
+      };
+    }
+    
+    // Check hold piece for well filling too
+    if (holdId !== null) {
+      let holdWellMoves = findWellFillingMoves(board, holdId);
+      if (holdWellMoves.length > 0 && (!bestMove || holdWellMoves[0].wellScore > (bestMove.wellScore || 0))) {
+        bestMove = {
+          useHold: true,
+          x: holdWellMoves[0].x,
+          y: holdWellMoves[0].y,
+          rot: holdWellMoves[0].rot,
+          shape: holdWellMoves[0].shape,
+          wellFilling: true
+        };
       }
     }
   }
