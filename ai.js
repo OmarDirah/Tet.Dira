@@ -227,8 +227,19 @@ function executeAIMoveStep() {
     aiMoveStep = 0;
     aiMoveSequence = [];
     const boardArr = board.map(row => row.map(cell => (cell ? 1 : 0)));
+    
+    // Test if improved AI is available
+    if (!window.findBestMove) {
+      addToConsole(`❌ ERROR: Improved AI not loaded!`);
+      return;
+    }
+    
+    addToConsole(`🔍 Calling improved AI function...`);
     const bestMove = pickCleanestMove(boardArr, getHelperId(current));
-    if(!bestMove) return;
+    if(!bestMove) {
+      addToConsole(`❌ ERROR: No move returned from AI!`);
+      return;
+    }
     aiMoveSequence = [];
 
     // Enhanced debug logging
@@ -241,7 +252,9 @@ function executeAIMoveStep() {
     // Handle hold if the improved AI suggests it
     if (bestMove.useHold && canHold) {
       aiMoveSequence.push('hold');
-      if (bestMove.simpleOverride) {
+      if (bestMove.firstMoveTest) {
+        addToConsole(`🚨 FIRST MOVE TEST: AI forced to use HOLD on first move`);
+      } else if (bestMove.simpleOverride) {
         addToConsole(`🔄 SIMPLE OVERRIDE: AI using HOLD every other move`);
       } else if (bestMove.testHold) {
         addToConsole(`🧪 TEST: AI forced to use HOLD for testing`);
