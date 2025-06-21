@@ -241,7 +241,9 @@ function executeAIMoveStep() {
     // Handle hold if the improved AI suggests it
     if (bestMove.useHold && canHold) {
       aiMoveSequence.push('hold');
-      if (bestMove.testHold) {
+      if (bestMove.simpleOverride) {
+        addToConsole(`🔄 SIMPLE OVERRIDE: AI using HOLD every other move`);
+      } else if (bestMove.testHold) {
         addToConsole(`🧪 TEST: AI forced to use HOLD for testing`);
       } else if (bestMove.forcedHold) {
         addToConsole(`🔄 AI forced to use HOLD as last resort`);
